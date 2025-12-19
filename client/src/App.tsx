@@ -1,28 +1,38 @@
-import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContext";
+import { WelcomePage } from "@/pages/WelcomePage";
+import { OnboardingPage } from "@/pages/OnboardingPage";
+import { ChatPage } from "@/pages/ChatPage";
 
-function Router() {
-  return (
-    <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
-      <Route component={NotFound} />
-    </Switch>
-  );
+function AppContent() {
+  const { currentStep, isOnboardingComplete } = useUserProfile();
+
+  if (isOnboardingComplete) {
+    return <ChatPage />;
+  }
+
+  if (currentStep === "welcome") {
+    return <WelcomePage />;
+  }
+
+  return <OnboardingPage />;
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ThemeProvider>
+        <UserProfileProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AppContent />
+          </TooltipProvider>
+        </UserProfileProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
