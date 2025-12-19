@@ -4,11 +4,25 @@ import OpenAI from "openai";
 import { chatRequestSchema, type UserProfile } from "@shared/schema";
 import { peptideKnowledgeBase } from "./peptideKnowledgeBase";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+// Using gpt-4o as the primary model
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+interface Peptide {
+  name: string;
+  aliases: string[];
+  mechanism: string;
+  category_primary: string;
+  goals_addressed: string[];
+  monthly_cost_range: string;
+  administration: string[];
+  timeline_to_results: string;
+  side_effects: string[];
+  stack_synergy: string[];
+  stack_redundant: string[];
+}
+
 function buildPeptideSummaries(): string {
-  return peptideKnowledgeBase.peptides.map(p => 
+  return (peptideKnowledgeBase.peptides as Peptide[]).map((p: Peptide) => 
     `**${p.name}** (${p.aliases.join(", ") || "no aliases"}): ${p.mechanism.slice(0, 100)}... Category: ${p.category_primary}. Goals: ${p.goals_addressed.slice(0, 5).join(", ")}. Cost: ${p.monthly_cost_range}. Admin: ${p.administration.join("/")}. Timeline: ${p.timeline_to_results}. Side effects: ${p.side_effects.slice(0, 4).join(", ")}. Stack with: ${p.stack_synergy.slice(0, 3).join(", ") || "standalone"}. Avoid stacking with: ${p.stack_redundant.join(", ") || "none"}.`
   ).join("\n");
 }
@@ -20,7 +34,7 @@ function buildBudgetGuide(): string {
 
 function buildContraindicationWarnings(conditions: string[]): string {
   const warnings: string[] = [];
-  const matrix = peptideKnowledgeBase.contraindication_matrix;
+  const matrix = peptideKnowledgeBase.contraindication_matrix as Record<string, string[]>;
   
   for (const [condition, peptides] of Object.entries(matrix)) {
     if (conditions.some(c => c.toLowerCase().includes(condition.replace("_", " ")))) {
@@ -132,11 +146,15 @@ export async function registerRoutes(
         }))
       ];
 
+      console.log("Sending request to OpenAI with", openaiMessages.length, "messages");
+      
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: openaiMessages,
-        max_completion_tokens: 2048
+        max_tokens: 2048
       });
+      
+      console.log("Received response from OpenAI");
 
       const assistantMessage = response.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
 
