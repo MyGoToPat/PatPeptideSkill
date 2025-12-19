@@ -1,0 +1,83 @@
+# Replit Opening Prompt - Copy Everything Below This Line
+
+Build a Peptide Advisor chatbot using Next.js 14 with App Router and Edge runtime.
+
+## Tech Stack (Required)
+- Next.js 14+ with App Router
+- TypeScript
+- Tailwind CSS for styling
+- OpenAI API integration (I will add my API key to Secrets as OPENAI_API_KEY)
+- Edge runtime for API routes
+
+## What This App Does
+An AI-powered chatbot that helps users learn about peptides. It has two main parts:
+
+### Part 1: Onboarding Flow (Multi-step wizard)
+Guide users through 5 steps to build their profile:
+
+**Step 1 - Intent:** "What brings you to explore peptides?"
+- Cosmetic / Aesthetic
+- Medical / Therapeutic  
+- Both
+
+**Step 2 - Experience:** "How familiar are you with peptides?"
+- Complete Beginner
+- Curious Researcher
+- Experienced User
+
+**Step 3 - Biological Profile:**
+- Gender selection (Male / Female / Prefer not to say)
+- If Female: Life stage (Pre-menopausal, Peri-menopausal, Post-menopausal, Medically-induced menopause) + conditions (PCOS, Thyroid issues, Insulin resistance, Low libido)
+- If Male: Conditions (Low testosterone, On TRT, Using steroids, Thyroid issues, Insulin resistance, ED/Low libido)
+
+**Step 4 - Goals:** Pick and rank top 3 priorities from categories:
+- Body Composition (fat loss, muscle building, body recomp)
+- Performance (recovery, injury healing, joint health)
+- Anti-Aging (skin, hair, tanning, longevity)
+- Metabolic (appetite control, blood sugar, hormones)
+- Other (sleep, cognitive, libido, immune, gut health)
+
+**Step 5 - Constraints:**
+- Budget tier ($50-150 / $150-300 / $300+ / Unlimited)
+- Administration preference (Injections OK / Oral only / Topical only / Any method)
+
+**Step 6 - Summary:** Show profile summary with Confirm/Edit buttons
+
+### Part 2: Chat Interface
+After onboarding, free-form chat where the AI (named "Pat") gives personalized peptide guidance based on their profile.
+
+Features needed:
+- Chat bubbles (user on right, Pat on left)
+- Typing indicator
+- Markdown rendering for tables/formatting
+- Quick action buttons: "Compare peptides", "Show stacks", "Cost breakdown", "Side effects"
+- Mobile responsive (works in app webviews)
+- Dark mode support
+
+## OpenAI Integration
+Create an Edge API route at /api/chat that:
+1. Takes the user's message and their profile
+2. Sends to GPT-4 with a system prompt that includes the user profile and peptide knowledge base
+3. Returns the AI response
+
+The system prompt should instruct the AI to:
+- Be warm and friendly (not clinical)
+- Always personalize based on user profile
+- Include cost estimates and side effects in recommendations
+- Format comparisons as tables
+- End recommendations with "discuss with your healthcare provider"
+
+## Files I Will Upload
+After you create the project structure, I will upload:
+1. `peptide-knowledge-base.json` - Contains all peptide data (mechanisms, dosing, costs, side effects, stacking rules)
+
+Please embed this JSON data into the system prompt for the AI.
+
+## Start By
+1. Setting up the Next.js project structure
+2. Creating the onboarding flow components
+3. Creating the chat interface
+4. Setting up the OpenAI API route
+5. Connecting everything together
+
+Make it mobile-first and ensure it works well when opened inside a mobile app webview.
