@@ -13,23 +13,27 @@ interface Peptide {
   mechanism: string;
   category_primary: string;
   goals_addressed: string[];
-  monthly_cost_range: string;
+  monthly_cost_estimate: string;
   administration: string[];
   timeline_to_results: string;
   side_effects: string[];
   stack_synergy: string[];
   stack_redundant: string[];
+  popularity_rank?: number;
 }
 
 function buildPeptideSummaries(): string {
   return (peptideKnowledgeBase.peptides as Peptide[]).map((p: Peptide) => 
-    `**${p.name}** (${p.aliases.join(", ") || "no aliases"}): ${p.mechanism.slice(0, 100)}... Category: ${p.category_primary}. Goals: ${p.goals_addressed.slice(0, 5).join(", ")}. Cost: ${p.monthly_cost_range}. Admin: ${p.administration.join("/")}. Timeline: ${p.timeline_to_results}. Side effects: ${p.side_effects.slice(0, 4).join(", ")}. Stack with: ${p.stack_synergy.slice(0, 3).join(", ") || "standalone"}. Avoid stacking with: ${p.stack_redundant.join(", ") || "none"}.`
+    `**${p.name}** (${p.aliases?.join(", ") || "no aliases"}): ${p.mechanism?.slice(0, 100) || ""}... Category: ${p.category_primary}. Goals: ${p.goals_addressed?.slice(0, 5).join(", ") || "various"}. Cost: ${p.monthly_cost_estimate || "varies"}. Admin: ${p.administration?.join("/") || "injection"}. Timeline: ${p.timeline_to_results || "varies"}. Side effects: ${p.side_effects?.slice(0, 4).join(", ") || "minimal"}. Stack with: ${p.stack_synergy?.slice(0, 3).join(", ") || "standalone"}. Avoid stacking with: ${p.stack_redundant?.join(", ") || "none"}.`
   ).join("\n");
 }
 
 function buildBudgetGuide(): string {
-  const { budget_optimization } = peptideKnowledgeBase;
-  return `Budget tier options: Low($50-150): ${budget_optimization.budget.join(", ")}. Mid($150-300): ${budget_optimization.moderate.join(", ")}. Premium($300+): ${budget_optimization.premium.join(", ")}.`;
+  const bo = peptideKnowledgeBase.budget_optimization as Record<string, string[]>;
+  const budget = bo?.budget_under_100 || bo?.budget || [];
+  const moderate = bo?.moderate_100_200 || bo?.moderate || [];
+  const premium = bo?.premium_200_plus || bo?.premium || [];
+  return `Budget tier options: Low(<$100/mo): ${budget.join(", ")}. Mid($100-200/mo): ${moderate.join(", ")}. Premium($200+/mo): ${premium.join(", ")}.`;
 }
 
 function buildContraindicationWarnings(conditions: string[]): string {

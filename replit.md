@@ -44,6 +44,12 @@ Preferred communication style: Simple, everyday language.
 - **OpenAI API**: Powers the conversational AI assistant using `gpt-4o` model (API key stored as `OPENAI_API_KEY` secret)
 - System prompt includes summarized peptide knowledge (~5KB) for efficient token usage
 
+### Knowledge Base (v3.0)
+- **24 peptides** with detailed information from Pure Life Peptides supplier
+- Includes: Semaglutide, Tirzepatide, Retatrutide, Cagrilintide, BPC-157, TB-500, GHK-Cu, IGF1-LR3, CJC-1295, Ipamorelin, AOD-9604, MOTS-c, NAD+, Melanotan 2, PT-141, Gonadorelin, Tesamorelin, DSIP, Selank, Semax, MK-677, Tesofensine, Cardarine
+- Supplier pricing with vial costs and monthly estimates
+- Reconstitution instructions, popularity rankings, stacking rules
+
 ### Database
 - **PostgreSQL**: Primary database, connection via `DATABASE_URL` environment variable
 - **Drizzle ORM**: Type-safe database operations with schema push via `npm run db:push`
