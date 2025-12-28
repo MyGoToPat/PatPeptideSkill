@@ -1,0 +1,541 @@
+# Peptide Advisor Chatbot - Replit Build Instructions
+
+## Project Overview
+
+Build an AI-powered peptide education and recommendation chatbot that guides users through a personalized onboarding flow, then provides tailored peptide guidance based on their profile. The system should feel like talking to a knowledgeable friend, not a medical database.
+
+**Primary Use Cases:**
+- Users exploring peptides for the first time
+- Users wanting to compare options for specific goals
+- Users preparing questions for their healthcare provider
+
+---
+
+## Tech Stack Requirements
+
+### Framework
+- **Next.js 14+** with App Router (Edge-compatible)
+- **Edge Runtime** for API routes (faster, works in app webviews)
+- **TypeScript** for type safety
+
+### Styling
+- **Tailwind CSS** for responsive design
+- Mobile-first approach
+- Support for both light and dark modes
+
+### AI Integration
+- **OpenAI API** (GPT-4 or GPT-4-turbo recommended)
+- Store API key in Replit Secrets as `OPENAI_API_KEY`
+
+### Data
+- Embedded knowledge base (JSON)
+- No database required for MVP (stateless conversations)
+
+---
+
+## Environment Setup
+
+```bash
+# Replit will handle most of this, but ensure these are configured:
+
+# In Replit Secrets (Tools > Secrets):
+OPENAI_API_KEY=sk-your-key-here
+
+# In next.config.js - enable Edge runtime:
+module.exports = {
+  experimental: {
+    runtime: 'edge',
+  },
+}
+```
+
+---
+
+## Core Features to Build
+
+### 1. Landing/Welcome Screen
+- Brief intro: "I'm Pat, your peptide education assistant"
+- Clear CTA: "Let's find what's right for you" button
+- Disclaimer at bottom: "Educational purposes only. Consult a healthcare provider."
+
+### 2. Onboarding Flow (Progressive Multi-Step)
+
+Build as a guided conversation, not a form. Each step should feel natural.
+
+#### Step 1: Intent
+```
+Pat: "What brings you to explore peptides today?"
+
+Options (cards/buttons):
+- 🎨 Cosmetic / Aesthetic (skin, hair, anti-aging, appearance)
+- 🏥 Medical / Therapeutic (healing, recovery, metabolic health)
+- ✨ Both (I want to explore all options)
+```
+
+#### Step 2: Experience Level
+```
+Pat: "How familiar are you with peptides?"
+
+Options:
+- 🌱 Complete Beginner - "I've heard of them but don't really know what they are"
+- 📚 Curious Researcher - "I've read about some (like semaglutide or BPC-157) but haven't used any"
+- 💪 Experienced User - "I've used peptides and want to optimize my protocol"
+```
+
+#### Step 3: Biological Profile
+```
+Pat: "To give you the most relevant guidance, I need to know a bit about you."
+
+Gender Selection:
+- Male
+- Female  
+- Prefer not to say
+
+[If Female selected, show follow-up:]
+Pat: "What stage of life are you in?"
+- Pre-menopausal (regular cycles)
+- Peri-menopausal (irregular cycles, transitioning)
+- Post-menopausal (natural)
+- Medically-induced menopause (surgical, chemotherapy, etc.)
+
+Pat: "Do any of these apply to you?" (multi-select)
+- PCOS
+- Thyroid issues
+- Insulin resistance / Pre-diabetes
+- Low libido
+- None of these
+
+[If Male selected, show follow-up:]
+Pat: "Do any of these apply to you?" (multi-select)
+- Low testosterone (diagnosed or suspected)
+- Currently on TRT
+- Using anabolic steroids
+- Thyroid issues
+- Insulin resistance / Pre-diabetes
+- Erectile dysfunction / Low libido
+- None of these
+```
+
+#### Step 4: Goals (Ranked Selection)
+```
+Pat: "What are your top priorities? Pick up to 3 and rank them."
+
+Categories with expandable options:
+
+Body Composition:
+- Fat loss (general)
+- Stubborn fat (belly, hips)
+- Muscle building / preservation
+- Body recomposition
+
+Performance & Recovery:
+- Workout recovery
+- Injury healing
+- Joint health
+- Athletic performance
+
+Anti-Aging & Cosmetic:
+- Skin quality
+- Hair growth
+- Tanning
+- Longevity
+
+Metabolic & Hormonal:
+- Appetite control
+- Blood sugar regulation
+- Hormone optimization
+- Menopause relief
+
+Other:
+- Sleep quality
+- Cognitive function
+- Sexual function / Libido
+- Immune support
+- Gut health
+```
+
+#### Step 5: Constraints
+```
+Pat: "A few practical questions..."
+
+Budget:
+- 💰 Budget-conscious ($50-150/month)
+- 💵 Moderate ($150-300/month)
+- 💎 Optimal ($300+/month)
+- 🚀 Cost not a factor
+
+Administration:
+- 💉 Comfortable with injections
+- 💊 Prefer oral/sublingual only
+- 🧴 Prefer topical only
+- ✅ Open to any method
+```
+
+#### Step 6: Summary & Confirmation
+```
+Pat: "Here's what I understand about you:
+
+**Intent:** [Cosmetic/Medical/Both]
+**Experience:** [Level]
+**Profile:** [Gender, life stage, conditions]
+**Top Goals:** 
+1. [Goal 1]
+2. [Goal 2]
+3. [Goal 3]
+**Budget:** [Tier]
+**Preference:** [Administration method]
+
+Does this look right?"
+
+[Confirm] [Edit Something]
+```
+
+### 3. Main Chat Interface
+
+After onboarding, transition to freeform chat with the user's profile embedded in context.
+
+**UI Elements:**
+- Chat message bubbles (user right, Pat left)
+- Typing indicator when AI is responding
+- Quick action buttons below input:
+  - "Compare peptides"
+  - "Show me stacks"
+  - "Cost breakdown"
+  - "Side effects"
+- Ability to render markdown tables for comparisons
+- "Start Over" option in menu
+
+### 4. Response Formatting
+
+The AI should format responses appropriately:
+
+**For Comparisons:** Render as tables
+```
+| Peptide | Best For | Monthly Cost | Key Benefit |
+|---------|----------|--------------|-------------|
+| CJC-1295 + Ipamorelin | Body recomp | $100-200 | GH optimization |
+| Semaglutide | Weight loss | $150-300 | Appetite control |
+```
+
+**For Recommendations:** Structured cards
+```
+## Recommended for You: CJC-1295 + Ipamorelin Stack
+
+**Why this fits:** Based on your goals of [X] and [Y], this stack...
+
+**How it works:** [Brief mechanism]
+
+**Expected timeline:** 2-4 weeks for sleep improvement, 8-12 weeks for body composition
+
+**Estimated cost:** $100-200/month
+
+**Common side effects:** Water retention, joint stiffness (usually temporary)
+
+**Crossover benefits you might like:** Many users report significantly better sleep quality.
+
+⚠️ **Discuss with your provider:** [Specific questions to ask]
+```
+
+---
+
+## Knowledge Base Structure
+
+Embed this as a JSON file that gets injected into the system prompt. Here's the schema:
+
+```typescript
+// types/peptide.ts
+
+interface Peptide {
+  id: string;
+  name: string;
+  aliases: string[];
+  category_primary: string;
+  categories_secondary: string[];
+  mechanism: string;
+  goals_addressed: string[];
+  gender_notes: {
+    male: string;
+    female: string;
+  };
+  conditions_beneficial: string[];
+  conditions_contraindicated: string[];
+  dosing: {
+    typical_range: string;
+    frequency: string;
+    timing: string;
+    cycle_length: string;
+  };
+  administration: ('subcutaneous' | 'oral' | 'topical' | 'nasal')[];
+  cost_tier: 'budget' | 'moderate' | 'premium';
+  monthly_cost_range: string;
+  side_effects: string[];
+  crossover_benefits: string[];
+  stack_synergy: string[];  // peptide IDs that work well together
+  stack_redundant: string[]; // peptide IDs that are redundant
+  timeline_to_results: string;
+  research_status: 'FDA-approved' | 'clinical-trials' | 'research-stage';
+}
+
+interface UserProfile {
+  intent: 'cosmetic' | 'medical' | 'both';
+  experience_level: 'beginner' | 'intermediate' | 'advanced';
+  gender: 'male' | 'female' | 'unspecified';
+  life_stage?: string;
+  conditions: string[];
+  goals_ranked: string[];
+  budget_tier: 'budget' | 'moderate' | 'optimal' | 'unlimited';
+  administration_preference: string[];
+}
+```
+
+---
+
+## OpenAI Integration
+
+### API Route (Edge Runtime)
+
+```typescript
+// app/api/chat/route.ts
+
+import OpenAI from 'openai';
+import { NextRequest } from 'next/server';
+import { peptideKnowledgeBase } from '@/data/peptides';
+
+export const runtime = 'edge';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: NextRequest) {
+  const { messages, userProfile } = await req.json();
+
+  const systemPrompt = buildSystemPrompt(userProfile, peptideKnowledgeBase);
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4-turbo-preview',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ],
+    temperature: 0.7,
+    max_tokens: 1500,
+  });
+
+  return new Response(JSON.stringify({
+    message: response.choices[0].message.content,
+  }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function buildSystemPrompt(profile: UserProfile, kb: any): string {
+  return `You are Pat, a knowledgeable and friendly peptide education assistant. Your role is to help users understand peptides and prepare informed questions for their healthcare providers.
+
+## Your Personality
+- Warm, approachable, never clinical or robotic
+- Confident but not preachy
+- You explain complex things simply
+- You proactively mention crossover benefits users might not know about
+- You always include cost estimates and side effects in recommendations
+
+## User Profile
+${JSON.stringify(profile, null, 2)}
+
+## Knowledge Base
+${JSON.stringify(kb, null, 2)}
+
+## Response Guidelines
+
+1. **Always personalize** based on the user's profile (gender, conditions, goals, budget)
+
+2. **For recommendations**, always include:
+   - Why it fits their specific situation
+   - Mechanism (brief, accessible language)
+   - Timeline to expect results
+   - Monthly cost estimate
+   - Common side effects
+   - Any crossover benefits they'd appreciate
+   - Questions to discuss with their provider
+
+3. **For comparisons**, use markdown tables
+
+4. **Stacking guidance**:
+   - Recommend synergistic combinations
+   - Warn about redundant pairings (e.g., "CJC-1295 and Sermorelin both work the same way—choose one")
+   - Flag contraindications based on their conditions
+
+5. **Contraindication alerts** (must always mention):
+   - Cancer history: Avoid all GH-promoting peptides
+   - Pregnancy: Recommend avoiding peptides
+   - Specific condition conflicts from knowledge base
+
+6. **Never**:
+   - Provide specific medical advice
+   - Recommend sources/vendors
+   - Claim peptides can "cure" anything
+   - Skip side effect disclosure
+
+7. **Always end recommendations with**: "This is educational information to discuss with your healthcare provider. They can help determine if this is appropriate for your specific situation."
+
+## Formatting
+- Use markdown for structure
+- Use tables for comparisons
+- Use bullet points for lists
+- Keep paragraphs short and scannable
+- Use emoji sparingly for visual breaks (✅ ⚠️ 💡)`;
+}
+```
+
+---
+
+## UI Components Needed
+
+### 1. OnboardingFlow.tsx
+Multi-step wizard with progress indicator
+
+### 2. ChatInterface.tsx
+- Message list with auto-scroll
+- Input with send button
+- Quick action buttons
+- Typing indicator
+
+### 3. MessageBubble.tsx
+- Supports markdown rendering (use react-markdown)
+- Different styles for user vs Pat
+- Table rendering for comparisons
+
+### 4. PeptideCard.tsx
+Structured recommendation display
+
+### 5. ComparisonTable.tsx
+Responsive table for peptide comparisons
+
+### 6. QuickActions.tsx
+Contextual suggestion buttons
+
+---
+
+## Responsive Design Requirements
+
+### Mobile (< 768px)
+- Full-width chat interface
+- Bottom-fixed input
+- Collapsible onboarding steps
+- Touch-friendly buttons (min 44px tap targets)
+- Swipeable quick actions
+
+### Tablet (768px - 1024px)
+- Slightly wider chat column
+- Side panel for user profile summary (collapsible)
+
+### Desktop (> 1024px)
+- Centered chat column (max-width: 800px)
+- Persistent sidebar showing:
+  - User profile summary
+  - Quick actions
+  - "Start Over" option
+
+---
+
+## Sample Conversation Flow
+
+```
+[After onboarding completes]
+
+Pat: "Thanks for sharing that with me! Based on your profile, you're looking primarily at fat loss and muscle preservation, you're dealing with some insulin resistance, and you'd prefer to keep costs moderate.
+
+I have some thoughts on what might work well for you. Would you like me to:
+• Give you my top recommendation with details
+• Compare a few options side-by-side
+• Start with the basics of how fat loss peptides work
+
+What sounds most helpful?"
+
+User: "Give me your top recommendation"
+
+Pat: "## My Top Pick for You: CJC-1295 + Ipamorelin Stack
+
+**Why this fits your situation:**
+Given your goals of fat loss while preserving muscle, and your insulin resistance, this stack hits the sweet spot. It optimizes your growth hormone levels naturally, which supports both fat metabolism AND muscle retention—without the appetite effects of some GLP-1 medications.
+
+**How it works:**
+CJC-1295 extends your natural GH release, while Ipamorelin triggers clean GH pulses (without the side effects of older peptides). Together, they create a synergistic effect that's greater than either alone.
+
+**What to expect:**
+- Weeks 1-2: Improved sleep quality (often the first thing people notice)
+- Weeks 4-6: Better workout recovery
+- Weeks 8-12: Visible changes in body composition
+
+**Cost estimate:** $100-200/month (fits your moderate budget ✅)
+
+**Common side effects:** 
+- Water retention (usually temporary, first few weeks)
+- Occasional joint stiffness
+- Tingling/numbness in hands (rare, dose-dependent)
+
+**💡 Bonus you might like:** Many users report significantly deeper sleep on this stack. Given that poor sleep worsens insulin resistance, this could be a helpful secondary benefit for you.
+
+**⚠️ One thing to discuss with your provider:** Since you mentioned insulin resistance, ask them about monitoring your fasting glucose during the first month. GH can affect blood sugar in some people.
+
+Would you like me to compare this to other options, or dive deeper into how to use this stack?"
+```
+
+---
+
+## Error Handling
+
+- **API failures:** Show friendly retry message
+- **Rate limiting:** Queue messages, show "Pat is thinking..."
+- **Empty responses:** Fallback to "Let me try that again..."
+- **Network issues:** Offline indicator with cached conversation
+
+---
+
+## Testing Checklist
+
+- [ ] Onboarding flow completes successfully
+- [ ] User profile correctly passed to AI
+- [ ] Responses are personalized to profile
+- [ ] Tables render correctly on mobile
+- [ ] Quick actions work
+- [ ] Conversation persists during session
+- [ ] "Start Over" clears state properly
+- [ ] Dark mode works
+- [ ] Works in iOS Safari (webview)
+- [ ] Works in Android Chrome (webview)
+- [ ] Edge runtime deploys successfully
+
+---
+
+## Deployment Notes
+
+1. Ensure `OPENAI_API_KEY` is set in Replit Secrets
+2. Test Edge runtime compatibility before deploying
+3. Enable HTTPS (Replit handles this automatically)
+4. Test in actual app webview if possible
+
+---
+
+## Future Enhancements (Not MVP)
+
+- Conversation history persistence
+- Export recommendations as PDF
+- Dosing calculator integration
+- Progress tracking
+- Provider locator
+- Community protocols
+
+---
+
+## Questions for Developer
+
+If anything is unclear:
+1. Should the onboarding be skippable for returning users?
+2. Preferred animation library (Framer Motion suggested)?
+3. Should we add voice input option?
+4. Any specific brand colors/fonts to use?
+
+---
+
+**Ready to build? Start with the onboarding flow, then add the chat interface, then integrate OpenAI. Test each piece before connecting them.**
