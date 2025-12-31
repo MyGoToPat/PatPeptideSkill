@@ -16,7 +16,7 @@ This uses **Gemini 1.5 Pro with web search** so Pat can look up real-time inform
 
 Add this to Replit Secrets:
 - **Name:** `GEMINI_API_KEY`
-- **Value:** `AIzaSyCZq1UjvipbsayfgHXGDX5IQpCXN4ghdbs`
+- **Value:** `[REDACTED-ROTATE-YOUR-KEY]`
 
 ---
 
