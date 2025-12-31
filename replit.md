@@ -28,10 +28,13 @@ Preferred communication style: Simple, everyday language.
 - **Knowledge Base**: Embedded JSON peptide database in `server/peptideKnowledgeBase.ts`
 
 ### Application Flow
-1. Welcome page introduces the chatbot
+1. Welcome page introduces the chatbot with two paths:
+   - **New Users**: Six-step onboarding wizard → personalized chat with Pat
+   - **Current Users (Mentor Mode)**: Direct access to side effects help or peptide deep-dives
 2. Six-step onboarding wizard collects user profile
 3. Chat interface provides personalized peptide recommendations
-4. Stateless conversation design (no persistent chat history in MVP)
+4. Mentor Mode chat provides targeted support without requiring onboarding
+5. Stateless conversation design (no persistent chat history in MVP)
 
 ### Key Design Patterns
 - **Shared Schema**: Types and validation schemas in `shared/` directory used by both client and server
@@ -41,8 +44,14 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### AI Services
-- **OpenAI API**: Powers the conversational AI assistant using `gpt-4o` model (API key stored as `OPENAI_API_KEY` secret)
+- **OpenAI API**: Powers the main conversational AI assistant using `gpt-4o` model (API key stored as `OPENAI_API_KEY` secret)
+- **Gemini API**: Powers Mentor Mode using `gemini-1.5-pro` with web search capability (API key stored as `GEMINI_API_KEY` secret), falls back to OpenAI if Gemini fails
 - System prompt includes summarized peptide knowledge (~5KB) for efficient token usage
+
+### Mentor Mode Databases
+- **Side Effects Database** (`server/sideEffectsDatabase.ts`): Covers 6 peptides with severity classification (NORMAL, MONITOR, URGENT)
+- **Injection Troubleshooting** (`server/injectionTroubleshooting.ts`): 8 common issues with causes, solutions, and prevention tips
+- **Timing Conflicts** (`server/timingConflicts.ts`): Peptide interaction checker with optimal scheduling
 
 ### Knowledge Base (v3.0)
 - **24 peptides** with detailed information from Pure Life Peptides supplier
