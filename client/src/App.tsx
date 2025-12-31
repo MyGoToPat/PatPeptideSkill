@@ -7,6 +7,7 @@ import { UserProfileProvider, useUserProfile } from "@/context/UserProfileContex
 import { WelcomePage } from "@/pages/WelcomePage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { ChatPage } from "@/pages/ChatPage";
+import { MentorChatPage } from "@/pages/MentorChatPage";
 
 function AppContent() {
   const { currentStep, isOnboardingComplete } = useUserProfile();
@@ -17,6 +18,10 @@ function AppContent() {
 
   if (currentStep === "welcome") {
     return <WelcomePage />;
+  }
+
+  if (currentStep === "mentor") {
+    return <MentorChatPage />;
   }
 
   return <OnboardingPage />;
