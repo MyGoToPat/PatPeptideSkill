@@ -159,7 +159,8 @@ export type OnboardingStep =
   | "biological"
   | "goals"
   | "constraints"
-  | "summary";
+  | "summary"
+  | "mentor";
 
 // Empty user type placeholders for compatibility
 export const users = {} as any;
