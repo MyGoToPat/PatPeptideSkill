@@ -1,0 +1,1380 @@
+# Peptide Advisor - Add Mentor Mode Feature
+
+## Overview
+
+Add a "Mentor Mode" feature to Pat that helps users who are already taking peptides with:
+- Side effects troubleshooting (with severity classification: 🟢 NORMAL, 🟡 MONITOR, 🔴 URGENT)
+- Injection technique issues
+- Timing and scheduling questions
+- General peptide education
+
+This uses **Gemini 1.5 Pro with web search** so Pat can look up real-time information when needed.
+
+---
+
+## STEP 1: Add Secret
+
+Add this to Replit Secrets:
+- **Name:** `GEMINI_API_KEY`
+- **Value:** `AIzaSyCZq1UjvipbsayfgHXGDX5IQpCXN4ghdbs`
+
+---
+
+## STEP 2: Update shared/schema.ts
+
+Find the `OnboardingStep` type and add "mentor" to it:
+
+```typescript
+// Onboarding Step
+export type OnboardingStep = 
+  | "welcome"
+  | "intent"
+  | "experience"
+  | "biological"
+  | "goals"
+  | "constraints"
+  | "summary"
+  | "mentor";  // ADD THIS LINE
+```
+
+---
+
+## STEP 3: Create server/sideEffectsDatabase.ts
+
+Create a new file `server/sideEffectsDatabase.ts` with a comprehensive side effects database. This should include:
+
+```typescript
+/**
+ * Comprehensive Side Effects Database for Peptide Mentor Mode
+ */
+
+export type SeverityLevel = 'normal' | 'monitor' | 'urgent';
+
+export interface SideEffect {
+  name: string;
+  aliases: string[];
+  severity: SeverityLevel;
+  typicalOnset: string;
+  typicalDuration: string;
+  frequency: string;
+  managementTips: string[];
+  whenToWorry: string[];
+  relatedTo?: string[];
+}
+
+export interface PeptideSideEffectProfile {
+  peptideId: string;
+  peptideName: string;
+  commonSideEffects: SideEffect[];
+  rareSideEffects: SideEffect[];
+  redFlags: string[];
+  firstWeekExpectations: string;
+  longTermConsiderations: string;
+}
+
+export const sideEffectsDatabase: PeptideSideEffectProfile[] = [
+  // SEMAGLUTIDE
+  {
+    peptideId: "semaglutide",
+    peptideName: "Semaglutide",
+    commonSideEffects: [
+      {
+        name: "Nausea",
+        aliases: ["queasy", "sick to stomach", "want to throw up", "upset stomach"],
+        severity: "normal",
+        typicalOnset: "Within 24-48 hours of injection",
+        typicalDuration: "2-4 weeks, often improves with continued use",
+        frequency: "Very common (40-50% of users)",
+        managementTips: [
+          "Eat smaller, more frequent meals",
+          "Avoid fatty, greasy, or fried foods",
+          "Take injection before bed to sleep through worst of it",
+          "Ginger capsules or tea 30 min before eating",
+          "Ondansetron (Zofran) 4mg - ask provider for prescription",
+          "Stay hydrated with small sips throughout day",
+          "Titrate dose slowly - don't rush to increase"
+        ],
+        whenToWorry: [
+          "Nausea persists beyond 4-6 weeks without improvement",
+          "Unable to keep any food or water down for 24+ hours",
+          "Accompanied by severe abdominal pain",
+          "Signs of dehydration (dark urine, dizziness, rapid heartbeat)"
+        ]
+      },
+      {
+        name: "Constipation",
+        aliases: ["can't poop", "backed up", "hard stool", "bowel issues"],
+        severity: "normal",
+        typicalOnset: "First 1-2 weeks",
+        typicalDuration: "Often ongoing but manageable",
+        frequency: "Common (20-30%)",
+        managementTips: [
+          "Increase fiber intake gradually",
+          "Drink MORE water - at least 64oz daily",
+          "Magnesium citrate 200-400mg at bedtime",
+          "Daily movement/walking helps gut motility"
+        ],
+        whenToWorry: [
+          "No bowel movement for 5+ days",
+          "Severe abdominal pain or bloating",
+          "Blood in stool"
+        ]
+      },
+      {
+        name: "Fatigue",
+        aliases: ["tired", "exhausted", "no energy", "sluggish"],
+        severity: "normal",
+        typicalOnset: "First 2-4 weeks",
+        typicalDuration: "Usually improves as body adjusts",
+        frequency: "Common (15-25%)",
+        managementTips: [
+          "Ensure adequate protein intake",
+          "Check you're not under-eating - minimum 1000-1200 calories",
+          "Stay hydrated",
+          "Electrolytes (sodium, potassium, magnesium)"
+        ],
+        whenToWorry: [
+          "Fatigue so severe you can't perform daily activities",
+          "Accompanied by rapid heartbeat or shortness of breath"
+        ]
+      },
+      {
+        name: "Injection Site Reaction",
+        aliases: ["red spot", "bump where I injected", "itchy injection site"],
+        severity: "normal",
+        typicalOnset: "Within hours of injection",
+        typicalDuration: "24-72 hours",
+        frequency: "Common (10-15%)",
+        managementTips: [
+          "Rotate injection sites",
+          "Let solution warm to room temperature before injecting",
+          "Use proper technique - 45° angle for subQ"
+        ],
+        whenToWorry: [
+          "Spreading redness beyond 2 inches",
+          "Hot to touch with fever",
+          "Pus or discharge from site"
+        ]
+      },
+      {
+        name: "Sulfur Burps",
+        aliases: ["rotten egg burps", "gross burps", "smelly burps"],
+        severity: "normal",
+        typicalOnset: "Within days of starting or increasing dose",
+        typicalDuration: "Can persist, often food-related",
+        frequency: "Common with GLP-1s",
+        managementTips: [
+          "Avoid high-fat foods - this is the #1 trigger",
+          "Pepto-Bismol can help",
+          "Eat slower, smaller portions"
+        ],
+        whenToWorry: [
+          "Accompanied by severe abdominal pain",
+          "Continuous vomiting"
+        ]
+      }
+    ],
+    rareSideEffects: [
+      {
+        name: "Pancreatitis",
+        aliases: ["severe stomach pain", "pain radiating to back"],
+        severity: "urgent",
+        typicalOnset: "Can occur anytime",
+        typicalDuration: "Requires medical treatment",
+        frequency: "Rare (<1%)",
+        managementTips: [
+          "STOP medication immediately",
+          "Seek emergency medical care"
+        ],
+        whenToWorry: [
+          "Severe, persistent abdominal pain",
+          "Pain radiating to back",
+          "Nausea/vomiting that won't stop"
+        ]
+      }
+    ],
+    redFlags: [
+      "Severe abdominal pain that doesn't resolve",
+      "Signs of allergic reaction (facial swelling, difficulty breathing, hives)",
+      "Symptoms of thyroid tumor (lump in neck, difficulty swallowing, hoarseness)",
+      "Signs of severe dehydration (confusion, rapid heartbeat, no urination)",
+      "Yellowing of skin or eyes (jaundice)"
+    ],
+    firstWeekExpectations: "Most users experience some nausea and decreased appetite in the first week. This is normal and typically improves. Start at lowest dose (0.25mg) and give your body 4 weeks to adjust before increasing.",
+    longTermConsiderations: "Most side effects diminish significantly with continued use. Monitor for hair thinning (sign of too-rapid weight loss). Regular lab work recommended."
+  },
+  
+  // BPC-157
+  {
+    peptideId: "bpc157",
+    peptideName: "BPC-157",
+    commonSideEffects: [
+      {
+        name: "Injection Site Irritation",
+        aliases: ["red where I injected", "sore injection spot", "bump at site"],
+        severity: "normal",
+        typicalOnset: "Within hours",
+        typicalDuration: "24-72 hours",
+        frequency: "Common (15-20%)",
+        managementTips: [
+          "Rotate injection sites",
+          "Let peptide warm to room temperature",
+          "Use bacteriostatic water, not sterile water"
+        ],
+        whenToWorry: [
+          "Spreading redness with heat",
+          "Pus or discharge",
+          "Fever"
+        ]
+      },
+      {
+        name: "Headache",
+        aliases: ["head pain", "head hurts"],
+        severity: "normal",
+        typicalOnset: "First few days of use",
+        typicalDuration: "Usually resolves with continued use",
+        frequency: "Uncommon (5-10%)",
+        managementTips: [
+          "Stay well hydrated",
+          "OTC pain relief (acetaminophen, ibuprofen)",
+          "Reduce dose if severe"
+        ],
+        whenToWorry: [
+          "Severe headache unlike any before",
+          "Headache with vision changes",
+          "Headache with stiff neck"
+        ]
+      },
+      {
+        name: "Dizziness",
+        aliases: ["dizzy", "lightheaded", "woozy"],
+        severity: "normal",
+        typicalOnset: "Within first hour of injection",
+        typicalDuration: "Usually brief (15-30 minutes)",
+        frequency: "Uncommon (5-10%)",
+        managementTips: [
+          "Inject while sitting or lying down",
+          "Stay hydrated",
+          "Don't stand up quickly after injection"
+        ],
+        whenToWorry: [
+          "Fainting",
+          "Persistent dizziness lasting hours"
+        ]
+      }
+    ],
+    rareSideEffects: [],
+    redFlags: [
+      "Signs of allergic reaction (swelling, hives, difficulty breathing)",
+      "Severe headache with vision changes or stiff neck",
+      "Infection signs at injection site (spreading redness, pus, fever)"
+    ],
+    firstWeekExpectations: "BPC-157 is generally very well tolerated. Most users experience no significant side effects. Some mild injection site irritation may occur. Many report improved sense of wellbeing and reduced inflammation within the first week.",
+    longTermConsiderations: "Long-term human safety data is limited. Most recommend cycling (4-8 weeks on, 2-4 weeks off). Avoid if any cancer history."
+  },
+  
+  // PT-141
+  {
+    peptideId: "pt141",
+    peptideName: "PT-141 (Bremelanotide)",
+    commonSideEffects: [
+      {
+        name: "Nausea",
+        aliases: ["queasy", "sick feeling", "want to throw up"],
+        severity: "normal",
+        typicalOnset: "30-60 minutes after injection",
+        typicalDuration: "2+ hours (can overlap with desired effects)",
+        frequency: "Very common (40%)",
+        managementTips: [
+          "Ondansetron (Zofran) 4mg 30 minutes BEFORE injection",
+          "Ginger capsules pre-treatment",
+          "Inject 2-3 hours before planned activity (nausea passes, effects remain)",
+          "First dose is usually worst - improves with subsequent use"
+        ],
+        whenToWorry: [
+          "Severe vomiting that won't stop",
+          "Signs of dehydration"
+        ]
+      },
+      {
+        name: "Flushing",
+        aliases: ["red face", "hot feeling", "warm flush"],
+        severity: "normal",
+        typicalOnset: "Within 30-60 minutes",
+        typicalDuration: "1-2 hours",
+        frequency: "Common (20%)",
+        managementTips: [
+          "This is normal melanocortin activation",
+          "Cool environment helps",
+          "Usually diminishes with continued use"
+        ],
+        whenToWorry: [
+          "Accompanied by difficulty breathing (allergic reaction)",
+          "Spreading hives or rash"
+        ]
+      },
+      {
+        name: "Hyperpigmentation",
+        aliases: ["skin darkening", "dark spots", "moles darker", "gum darkening"],
+        severity: "monitor",
+        typicalOnset: "With repeated use, especially >8 doses/month",
+        typicalDuration: "May be PERMANENT",
+        frequency: "1% at ≤8 doses/month; 38% with daily use",
+        managementTips: [
+          "STRICT limit: no more than 8 doses per month",
+          "Never use daily",
+          "Monitor moles for changes"
+        ],
+        whenToWorry: [
+          "Any mole changing shape, color, or size",
+          "New dark spots appearing"
+        ]
+      }
+    ],
+    rareSideEffects: [],
+    redFlags: [
+      "Allergic reaction (swelling, hives, difficulty breathing)",
+      "Chest pain or palpitations",
+      "Mole changes (size, shape, color) - see dermatologist",
+      "Priapism in men (erection >4 hours) - medical emergency"
+    ],
+    firstWeekExpectations: "First dose typically has most nausea - 40% experience it. Pre-treat with Zofran. Effects begin ~45-60 min after injection and last several hours. Inject 2-3 hours before planned activity to let nausea pass.",
+    longTermConsiderations: "CRITICAL: Max 8 doses per month to avoid permanent hyperpigmentation. Not for daily use. Not recommended for cardiovascular disease or uncontrolled hypertension."
+  },
+  
+  // CJC-1295/IPAMORELIN
+  {
+    peptideId: "cjc1295_ipamorelin",
+    peptideName: "CJC-1295/Ipamorelin",
+    commonSideEffects: [
+      {
+        name: "Water Retention",
+        aliases: ["bloated", "puffy", "swollen", "retaining water", "face puffy"],
+        severity: "normal",
+        typicalOnset: "First 1-2 weeks",
+        typicalDuration: "Usually resolves or stabilizes by week 4",
+        frequency: "Common (20-30%)",
+        managementTips: [
+          "This is common with GH-releasing peptides",
+          "Reduce sodium intake",
+          "Stay well hydrated (paradoxically helps)",
+          "May need to reduce dose temporarily"
+        ],
+        whenToWorry: [
+          "Severe swelling in hands/feet affecting function",
+          "Swelling with shortness of breath"
+        ]
+      },
+      {
+        name: "Joint Stiffness",
+        aliases: ["achy joints", "stiff in morning", "carpal tunnel feeling"],
+        severity: "normal",
+        typicalOnset: "First 2-4 weeks",
+        typicalDuration: "Often improves, may need dose adjustment",
+        frequency: "Common with GH peptides",
+        managementTips: [
+          "Related to GH increase - sign it's working",
+          "Reduce dose if severe",
+          "Stretch regularly"
+        ],
+        whenToWorry: [
+          "Severe carpal tunnel symptoms (numbness, weakness in hands)"
+        ]
+      },
+      {
+        name: "Vivid Dreams",
+        aliases: ["crazy dreams", "intense dreams", "sleeping deeply"],
+        severity: "normal",
+        typicalOnset: "First week",
+        typicalDuration: "Ongoing (this is actually a benefit)",
+        frequency: "Very common",
+        managementTips: [
+          "This is typically a POSITIVE effect",
+          "GH peptides enhance deep sleep",
+          "Take before bed to maximize this effect"
+        ],
+        whenToWorry: [
+          "Nightmares significantly affecting sleep quality"
+        ]
+      }
+    ],
+    rareSideEffects: [
+      {
+        name: "Blood Sugar Changes",
+        aliases: ["feeling shaky", "sugar crash"],
+        severity: "monitor",
+        typicalOnset: "Variable",
+        typicalDuration: "Ongoing while using",
+        frequency: "Uncommon, more common in diabetics",
+        managementTips: [
+          "GH can affect insulin sensitivity",
+          "Monitor blood sugar if diabetic or pre-diabetic"
+        ],
+        whenToWorry: [
+          "Significant blood sugar swings",
+          "Diabetes becoming harder to control"
+        ]
+      }
+    ],
+    redFlags: [
+      "Severe headache (intracranial pressure concern)",
+      "Vision changes",
+      "Severe carpal tunnel (numbness, weakness, dropping things)",
+      "Any cancer history - GH peptides contraindicated"
+    ],
+    firstWeekExpectations: "Many notice improved sleep quality within the first few days. Some water retention and mild joint stiffness may occur. Vivid dreams are common and indicate the peptides are working. Take before bed for best results.",
+    longTermConsiderations: "Body composition changes typically visible at 8-12 weeks. Cycle 8-12 weeks on, 4 weeks off. Not for use if any cancer history."
+  },
+  
+  // MK-677
+  {
+    peptideId: "mk677",
+    peptideName: "MK-677 (Ibutamoren)",
+    commonSideEffects: [
+      {
+        name: "Increased Appetite",
+        aliases: ["hungry all the time", "can't stop eating", "ravenous"],
+        severity: "normal",
+        typicalOnset: "Within first few days",
+        typicalDuration: "Often persists but may decrease after 2-4 weeks",
+        frequency: "Very common (expected effect)",
+        managementTips: [
+          "Take before bed - sleep through hunger peak",
+          "This is the ghrelin mechanism working",
+          "Often decreases after initial weeks"
+        ],
+        whenToWorry: [
+          "Unable to control eating affecting goals"
+        ]
+      },
+      {
+        name: "Water Retention",
+        aliases: ["bloated", "puffy", "holding water", "face swollen"],
+        severity: "normal",
+        typicalOnset: "First 1-2 weeks",
+        typicalDuration: "Often improves after 4 weeks",
+        frequency: "Common",
+        managementTips: [
+          "Reduce sodium intake",
+          "Stay hydrated",
+          "Lower dose if severe"
+        ],
+        whenToWorry: [
+          "Severe edema affecting mobility",
+          "Shortness of breath with swelling"
+        ]
+      },
+      {
+        name: "Blood Sugar Elevation",
+        aliases: ["sugar high", "glucose up", "A1C increased"],
+        severity: "monitor",
+        typicalOnset: "Can occur with ongoing use",
+        typicalDuration: "While using - may persist",
+        frequency: "Significant concern",
+        managementTips: [
+          "MK-677 can significantly affect insulin sensitivity",
+          "Monitor fasting glucose regularly",
+          "Not recommended for diabetics"
+        ],
+        whenToWorry: [
+          "Fasting glucose consistently elevated",
+          "Symptoms of high blood sugar"
+        ]
+      }
+    ],
+    rareSideEffects: [],
+    redFlags: [
+      "Significant blood sugar elevation",
+      "Severe edema with breathing difficulty",
+      "Cancer history (GH stimulation contraindicated)"
+    ],
+    firstWeekExpectations: "Expect significant appetite increase within first few days. Take before bed to sleep through hunger. Sleep quality typically improves noticeably.",
+    longTermConsiderations: "Blood sugar management is a real concern with long-term use. Not recommended for diabetics. Cancer history is absolute contraindication."
+  },
+  
+  // MELANOTAN 2
+  {
+    peptideId: "melanotan2",
+    peptideName: "Melanotan 2",
+    commonSideEffects: [
+      {
+        name: "Nausea",
+        aliases: ["queasy", "sick to stomach"],
+        severity: "normal",
+        typicalOnset: "Within 1-2 hours of injection",
+        typicalDuration: "2-4 hours",
+        frequency: "Very common initially",
+        managementTips: [
+          "Start with very low dose (0.1mg)",
+          "Take before bed to sleep through it",
+          "Usually improves with continued use"
+        ],
+        whenToWorry: [
+          "Severe vomiting",
+          "Unable to keep fluids down"
+        ]
+      },
+      {
+        name: "Flushing",
+        aliases: ["red face", "hot feeling", "flushed"],
+        severity: "normal",
+        typicalOnset: "Within 30 minutes",
+        typicalDuration: "1-2 hours",
+        frequency: "Common",
+        managementTips: [
+          "Normal melanocortin response",
+          "Usually decreases with continued use"
+        ],
+        whenToWorry: [
+          "Accompanied by difficulty breathing",
+          "Hives or swelling"
+        ]
+      },
+      {
+        name: "Mole Darkening",
+        aliases: ["moles getting darker", "new freckles", "spots darker"],
+        severity: "monitor",
+        typicalOnset: "With continued use",
+        typicalDuration: "May be permanent",
+        frequency: "Expected effect",
+        managementTips: [
+          "Monitor ALL moles before starting - photograph them",
+          "Check moles monthly for changes",
+          "Use sunscreen on face to prevent uneven tanning"
+        ],
+        whenToWorry: [
+          "Mole changing shape or border",
+          "Mole growing rapidly",
+          "New irregular dark spots"
+        ]
+      }
+    ],
+    rareSideEffects: [],
+    redFlags: [
+      "Mole changes (shape, size, color, border) - see dermatologist immediately",
+      "Priapism (erection >4 hours) - medical emergency",
+      "Allergic reaction",
+      "Melanoma history - absolute contraindication"
+    ],
+    firstWeekExpectations: "Loading phase: Start very low (0.1mg) due to nausea. Take before bed. Increased libido often noticed quickly. Photograph all moles before starting.",
+    longTermConsiderations: "CRITICAL: Regular mole monitoring required. Not for use with melanoma history. Loading phase followed by maintenance (1-2x weekly)."
+  }
+];
+
+// Helper functions
+export function getSideEffectsByPeptide(peptideId: string): PeptideSideEffectProfile | undefined {
+  return sideEffectsDatabase.find(p => p.peptideId.toLowerCase() === peptideId.toLowerCase());
+}
+
+export function isRedFlag(peptideId: string, symptomDescription: string): boolean {
+  const profile = getSideEffectsByPeptide(peptideId);
+  if (!profile) return false;
+  
+  const symptomLower = symptomDescription.toLowerCase();
+  return profile.redFlags.some(flag => 
+    flag.toLowerCase().split(/\s+/).some(word => 
+      symptomLower.includes(word) && word.length > 3
+    )
+  );
+}
+```
+
+---
+
+## STEP 4: Create server/injectionTroubleshooting.ts
+
+Create a new file with injection troubleshooting data:
+
+```typescript
+/**
+ * Injection Technique Troubleshooting Database
+ */
+
+export interface InjectionIssue {
+  issue: string;
+  aliases: string[];
+  commonCauses: string[];
+  solutions: string[];
+  prevention: string[];
+  severity: 'minor' | 'moderate' | 'serious';
+  seekHelpIf: string[];
+}
+
+export const injectionTroubleshootingDatabase: InjectionIssue[] = [
+  {
+    issue: "Injection Too Shallow (Subdermal Bleb)",
+    aliases: ["bump under skin", "blister at injection", "raised lump", "fluid under skin"],
+    commonCauses: [
+      "Needle didn't penetrate deep enough",
+      "Wrong angle (too horizontal)",
+      "Using too short needle"
+    ],
+    solutions: [
+      "The peptide will still absorb, just more slowly - don't re-inject",
+      "Gently massage the area to help dispersion",
+      "Apply warm compress to help absorption"
+    ],
+    prevention: [
+      "Use 45-degree angle for subcutaneous injection",
+      "Pinch at least 1 inch of skin if lean",
+      "Insert needle fully before injecting"
+    ],
+    severity: "minor",
+    seekHelpIf: ["Bleb doesn't resolve after several hours", "Area becomes red, hot, or painful"]
+  },
+  {
+    issue: "Cold Peptide Injection Pain",
+    aliases: ["burned when injecting", "stinging injection", "painful going in"],
+    commonCauses: [
+      "Injecting peptide straight from refrigerator",
+      "Cold solution causes vasoconstriction and pain"
+    ],
+    solutions: [
+      "Pain should resolve within minutes",
+      "Warm compress can help"
+    ],
+    prevention: [
+      "Remove vial from fridge 10-15 minutes before injection",
+      "Roll vial between palms to warm (don't shake)",
+      "Never microwave or use hot water"
+    ],
+    severity: "minor",
+    seekHelpIf: ["Pain persists for more than 30 minutes"]
+  },
+  {
+    issue: "Same Site Overuse (Lipohypertrophy)",
+    aliases: ["hard lump at injection site", "fatty lump", "dent in skin", "scar tissue"],
+    commonCauses: [
+      "Injecting in same spot repeatedly",
+      "Not rotating injection sites"
+    ],
+    solutions: [
+      "STOP using affected area for at least 4-6 weeks",
+      "Switch to completely different injection area",
+      "Lumps may take months to resolve"
+    ],
+    prevention: [
+      "Rotate injection sites systematically",
+      "Keep injection sites at least 1 inch apart",
+      "Alternate between abdomen, thighs, and arms"
+    ],
+    severity: "moderate",
+    seekHelpIf: ["Lump is painful or growing", "Signs of infection"]
+  },
+  {
+    issue: "Infection at Injection Site",
+    aliases: ["infected injection site", "pus at site", "red and hot", "spreading redness"],
+    commonCauses: [
+      "Poor sterile technique",
+      "Not swabbing site with alcohol",
+      "Reusing needles",
+      "Contaminated vial"
+    ],
+    solutions: [
+      "SEEK MEDICAL ATTENTION - antibiotics likely needed",
+      "Mark borders of redness to track spread",
+      "Do NOT squeeze or try to drain"
+    ],
+    prevention: [
+      "ALWAYS swab injection site with alcohol, let dry",
+      "NEVER reuse needles or syringes",
+      "Use bacteriostatic water (has preservative)",
+      "Don't touch needle after uncapping"
+    ],
+    severity: "serious",
+    seekHelpIf: [
+      "Any spreading redness",
+      "Red streaks extending from site",
+      "Fever",
+      "Pus or discharge"
+    ]
+  },
+  {
+    issue: "Air Bubble in Syringe",
+    aliases: ["air in syringe", "bubble in needle", "injected air bubble"],
+    commonCauses: ["Not properly expelling air before injection"],
+    solutions: [
+      "Small air bubbles in subQ injection are NOT dangerous",
+      "SubQ air is absorbed harmlessly",
+      "No need to re-dose"
+    ],
+    prevention: [
+      "Tap syringe with needle up to move bubbles to top",
+      "Push plunger slowly to expel air"
+    ],
+    severity: "minor",
+    seekHelpIf: ["This is almost never a concern for subcutaneous injections"]
+  }
+];
+
+export function findInjectionIssue(description: string): InjectionIssue | undefined {
+  const searchTerms = description.toLowerCase();
+  for (const issue of injectionTroubleshootingDatabase) {
+    if (issue.issue.toLowerCase().includes(searchTerms)) return issue;
+    for (const alias of issue.aliases) {
+      if (searchTerms.includes(alias.toLowerCase())) return issue;
+    }
+  }
+  return undefined;
+}
+```
+
+---
+
+## STEP 5: Create server/timingConflicts.ts
+
+Create a new file with timing requirements and conflicts:
+
+```typescript
+/**
+ * Peptide Timing Conflicts & Scheduling Database
+ */
+
+export interface TimingRequirement {
+  peptideId: string;
+  peptideName: string;
+  optimalTiming: 'morning' | 'evening' | 'bedtime' | 'anytime' | 'pre-activity';
+  timingRationale: string;
+  fastingRequired: boolean;
+  fastingDetails?: string;
+  foodInteractions: string[];
+  frequencyNotes: string;
+  spacingFromOthers: Array<{
+    conflictsWith: string;
+    reason: string;
+    recommendation: string;
+  }>;
+}
+
+export const timingDatabase: TimingRequirement[] = [
+  {
+    peptideId: "semaglutide",
+    peptideName: "Semaglutide",
+    optimalTiming: "anytime",
+    timingRationale: "Once weekly - same day each week. Many prefer evening to sleep through initial nausea.",
+    fastingRequired: false,
+    foodInteractions: ["Slows gastric emptying - fatty foods may cause more discomfort"],
+    frequencyNotes: "Once weekly, same day each week. Do not take more than once per 7 days.",
+    spacingFromOthers: [
+      { conflictsWith: "tirzepatide", reason: "Both are GLP-1 agonists", recommendation: "Never use together." },
+      { conflictsWith: "retatrutide", reason: "Both target GLP-1 receptor", recommendation: "Never use together." }
+    ]
+  },
+  {
+    peptideId: "cjc1295_ipamorelin",
+    peptideName: "CJC-1295/Ipamorelin",
+    optimalTiming: "bedtime",
+    timingRationale: "Best taken before bed to amplify natural GH pulse during sleep.",
+    fastingRequired: true,
+    fastingDetails: "Take on empty stomach - at least 2 hours after eating, no food for 30-60 minutes after.",
+    foodInteractions: ["CRITICAL: Food (especially carbs and fats) significantly blunts GH release"],
+    frequencyNotes: "Typically 1-2 times daily. Most common: once before bed.",
+    spacingFromOthers: [
+      { conflictsWith: "mk677", reason: "Both stimulate GH release", recommendation: "If using both, MK-677 at night, CJC/Ipa in morning." }
+    ]
+  },
+  {
+    peptideId: "mk677",
+    peptideName: "MK-677 (Ibutamoren)",
+    optimalTiming: "bedtime",
+    timingRationale: "Best at bedtime - causes drowsiness and hunger. Sleep through the appetite increase.",
+    fastingRequired: false,
+    foodInteractions: ["Dramatically increases appetite - expect hunger 30-60 min after dosing"],
+    frequencyNotes: "Once daily. Can be taken continuously or cycled (5 on/2 off).",
+    spacingFromOthers: []
+  },
+  {
+    peptideId: "bpc157",
+    peptideName: "BPC-157",
+    optimalTiming: "anytime",
+    timingRationale: "Can be taken any time. Some prefer twice daily (AM/PM) for consistent levels.",
+    fastingRequired: false,
+    foodInteractions: ["No significant food interactions"],
+    frequencyNotes: "Typically 1-2 times daily. 250-500mcg per dose.",
+    spacingFromOthers: [
+      { conflictsWith: "tb500", reason: "No conflict - actually highly synergistic", recommendation: "Excellent combination." }
+    ]
+  },
+  {
+    peptideId: "pt141",
+    peptideName: "PT-141 (Bremelanotide)",
+    optimalTiming: "pre-activity",
+    timingRationale: "Take 45 minutes to 2-3 hours before planned sexual activity. Effects last several hours.",
+    fastingRequired: false,
+    fastingDetails: "Light stomach recommended - not too full, not empty.",
+    foodInteractions: ["Heavy meal may delay onset"],
+    frequencyNotes: "MAXIMUM: Once per 24 hours, 8 doses per month.",
+    spacingFromOthers: [
+      { conflictsWith: "melanotan2", reason: "Both affect melanocortin receptors", recommendation: "Don't use same day." }
+    ]
+  },
+  {
+    peptideId: "semax",
+    peptideName: "Semax",
+    optimalTiming: "morning",
+    timingRationale: "Best taken in morning for cognitive enhancement. Avoid evening - may interfere with sleep.",
+    fastingRequired: false,
+    foodInteractions: ["No significant food interactions"],
+    frequencyNotes: "1-2 times daily. Morning and early afternoon. Avoid evening.",
+    spacingFromOthers: [
+      { conflictsWith: "selank", reason: "Synergistic - no conflict", recommendation: "Excellent combination: Semax for focus, Selank for calm." }
+    ]
+  }
+];
+
+export function checkTimingConflict(peptide1: string, peptide2: string): { hasConflict: boolean; reason?: string; recommendation?: string } {
+  const timing1 = timingDatabase.find(t => t.peptideId.toLowerCase() === peptide1.toLowerCase());
+  if (!timing1) return { hasConflict: false };
+  
+  const conflict = timing1.spacingFromOthers.find(c => c.conflictsWith.toLowerCase() === peptide2.toLowerCase());
+  if (conflict) {
+    return { hasConflict: true, reason: conflict.reason, recommendation: conflict.recommendation };
+  }
+  return { hasConflict: false };
+}
+
+export function getOptimalSchedule(peptideIds: string[]): string[] {
+  const schedule: string[] = [];
+  const timings = peptideIds.map(id => timingDatabase.find(t => t.peptideId.toLowerCase() === id.toLowerCase())).filter(Boolean) as TimingRequirement[];
+  
+  const morning = timings.filter(t => t.optimalTiming === 'morning');
+  const bedtime = timings.filter(t => t.optimalTiming === 'bedtime');
+  const anytime = timings.filter(t => t.optimalTiming === 'anytime');
+  
+  if (morning.length > 0) {
+    schedule.push(`🌅 MORNING: ${morning.map(t => t.peptideName).join(', ')}`);
+  }
+  if (anytime.length > 0) {
+    schedule.push(`☀️ ANYTIME: ${anytime.map(t => t.peptideName).join(', ')}`);
+  }
+  if (bedtime.length > 0) {
+    const fastingNeeded = bedtime.some(t => t.fastingRequired);
+    schedule.push(`🌙 BEDTIME${fastingNeeded ? ' (fasted)' : ''}: ${bedtime.map(t => t.peptideName).join(', ')}`);
+  }
+  
+  return schedule;
+}
+
+export function getPeptideTiming(peptideId: string): TimingRequirement | undefined {
+  return timingDatabase.find(t => t.peptideId.toLowerCase() === peptideId.toLowerCase());
+}
+```
+
+---
+
+## STEP 6: Update server/routes.ts
+
+Replace the entire routes.ts file with this updated version that includes Gemini API with web search:
+
+```typescript
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { chatRequestSchema, type UserProfile } from "@shared/schema";
+import { peptideKnowledgeBase } from "./peptideKnowledgeBase";
+import { sideEffectsDatabase, getSideEffectsByPeptide, isRedFlag } from "./sideEffectsDatabase";
+import { injectionTroubleshootingDatabase, findInjectionIssue } from "./injectionTroubleshooting";
+import { timingDatabase, checkTimingConflict, getOptimalSchedule, getPeptideTiming } from "./timingConflicts";
+
+// GEMINI API SETUP (for Mentor Mode - has web search)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
+
+// OPENAI FALLBACK
+import OpenAI from "openai";
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ... (keep existing helper functions: buildPeptideSummaries, buildBudgetGuide, buildContraindicationWarnings)
+
+// ADD these new helper functions:
+
+function buildSideEffectsReference(): string {
+  return sideEffectsDatabase.map(profile => {
+    const common = profile.commonSideEffects.map(e => e.name).join(", ");
+    const redFlags = profile.redFlags.slice(0, 3).join("; ");
+    return `**${profile.peptideName}**: Common: ${common}. RED FLAGS: ${redFlags}`;
+  }).join("\n\n");
+}
+
+function buildTimingReference(): string {
+  return timingDatabase.map(t => 
+    `**${t.peptideName}**: Best time: ${t.optimalTiming}. ${t.fastingRequired ? 'FASTING REQUIRED. ' : ''}${t.timingRationale.slice(0, 100)}...`
+  ).join("\n");
+}
+
+// ADD this new Mentor system prompt:
+
+function buildMentorSystemPrompt(): string {
+  return `You are Pat, a knowledgeable peptide mentor. You help users with:
+- Side effects assessment and management
+- Injection technique issues
+- Timing and scheduling questions
+
+## Your Personality
+- Warm, empathetic, never judgmental
+- Like a knowledgeable friend who's been through this
+- Always prioritize safety
+
+## SIDE EFFECTS DATABASE
+${buildSideEffectsReference()}
+
+## TIMING & SCHEDULING
+${buildTimingReference()}
+
+## ASSESSMENT PROTOCOL
+
+When a user describes symptoms:
+
+1. **Extract key information**: peptide(s), dose, duration, symptoms, timing
+2. **Classify severity**:
+   🟢 **NORMAL** - Expected side effect, usually resolves
+   🟡 **MONITOR** - Unusual, may need adjustment
+   🔴 **URGENT** - Red flag, stop peptide, seek medical attention
+
+3. **Provide actionable guidance**
+
+## RESPONSE FORMAT
+
+**Assessment: [🟢 NORMAL / 🟡 MONITOR / 🔴 URGENT]**
+
+[Brief explanation]
+
+**What often helps:**
+- [Tip 1]
+- [Tip 2]
+
+**Watch for these (would need attention):**
+- [Warning sign]
+
+*Educational guidance only. Consult healthcare provider if symptoms persist.*
+
+## CREDIBILITY HIERARCHY (when searching web)
+
+🔬 **CLINICAL** - Published research, FDA data
+🏥 **CLINICAL PRACTICE** - HRT clinic protocols
+👥 **ANECDOTAL** - User experiences, Reddit
+
+## RED FLAGS - ALWAYS URGENT 🔴
+
+- Difficulty breathing or throat swelling
+- Chest pain or severe palpitations
+- Severe headache with GH peptides
+- Vision changes
+- Spreading redness + fever at injection site
+- Yellowing skin/eyes
+- Priapism >4 hours
+
+## RULES
+1. Never dismiss concerns
+2. Ask clarifying questions one at a time
+3. Be specific with advice
+4. Search the web when unsure`;
+}
+
+// ADD Gemini API function:
+
+async function callGeminiWithSearch(systemPrompt: string, userMessage: string, conversationHistory: any[] = []): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Gemini API key not configured");
+  }
+
+  const parts: any[] = [];
+  parts.push({ text: `SYSTEM INSTRUCTIONS:\n${systemPrompt}\n\n---\n\n` });
+  
+  for (const msg of conversationHistory) {
+    parts.push({ text: `${msg.role.toUpperCase()}: ${msg.content}\n\n` });
+  }
+  parts.push({ text: `USER: ${userMessage}` });
+
+  const requestBody = {
+    contents: [{ parts }],
+    tools: [{ googleSearch: {} }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+    ]
+  };
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("\n") || "";
+}
+
+// ADD OpenAI fallback:
+
+async function callOpenAIFallback(systemPrompt: string, messages: any[]): Promise<string> {
+  const openaiMessages = [
+    { role: "system" as const, content: systemPrompt },
+    ...messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
+  ];
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: openaiMessages,
+    max_tokens: 2048
+  });
+  
+  return response.choices[0]?.message?.content || "I couldn't generate a response.";
+}
+
+// ADD peptide name extraction:
+
+function extractPeptideNames(text: string): string[] {
+  const peptideNames = [
+    "semaglutide", "wegovy", "ozempic", "tirzepatide", "mounjaro", "zepbound",
+    "bpc-157", "bpc157", "tb-500", "tb500", "pt-141", "pt141",
+    "melanotan", "mt2", "cjc-1295", "cjc1295", "ipamorelin",
+    "mk-677", "mk677", "tesamorelin", "semax", "selank", "dsip"
+  ];
+  
+  const found: string[] = [];
+  const textLower = text.toLowerCase();
+  
+  for (const name of peptideNames) {
+    if (textLower.includes(name.toLowerCase())) {
+      found.push(name.replace(/[-\s]/g, "").toLowerCase());
+    }
+  }
+  return [...new Set(found)];
+}
+
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  
+  // EXISTING: /api/chat endpoint (keep as is)
+  app.post("/api/chat", async (req, res) => {
+    // ... keep existing implementation
+  });
+
+  // NEW: /api/mentor endpoint
+  app.post("/api/mentor", async (req, res) => {
+    try {
+      const { messages, context } = req.body;
+      
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "Messages array required" });
+      }
+
+      const lastMessage = messages[messages.length - 1];
+      const userMessage = lastMessage?.content || "";
+      const conversationHistory = messages.slice(0, -1);
+
+      let systemPrompt = buildMentorSystemPrompt();
+      
+      if (context?.mode) {
+        systemPrompt += `\n\nUser selected: ${context.mode}`;
+      }
+
+      // Check for red flags
+      const mentionedPeptides = extractPeptideNames(userMessage);
+      let isUrgent = false;
+      for (const peptide of mentionedPeptides) {
+        if (isRedFlag(peptide, userMessage)) {
+          isUrgent = true;
+          break;
+        }
+      }
+
+      // Try Gemini first (has web search), fall back to OpenAI
+      let assistantMessage: string;
+      try {
+        assistantMessage = await callGeminiWithSearch(systemPrompt, userMessage, conversationHistory);
+      } catch (geminiError) {
+        console.warn("Gemini failed, using OpenAI:", geminiError);
+        assistantMessage = await callOpenAIFallback(systemPrompt, messages);
+      }
+
+      // Prepend urgent warning if red flag detected
+      if (isUrgent && !assistantMessage.includes("🔴")) {
+        assistantMessage = "🔴 **URGENT - SAFETY CONCERN DETECTED**\n\n" + assistantMessage;
+      }
+
+      return res.json({ message: assistantMessage, isUrgent });
+    } catch (error: any) {
+      console.error("Mentor API error:", error);
+      return res.status(500).json({ error: "An error occurred" });
+    }
+  });
+
+  // NEW: /api/timing-check endpoint
+  app.post("/api/timing-check", async (req, res) => {
+    const { peptides } = req.body;
+    if (!peptides || !Array.isArray(peptides)) {
+      return res.status(400).json({ error: "Peptides array required" });
+    }
+
+    const conflicts: any[] = [];
+    for (let i = 0; i < peptides.length; i++) {
+      for (let j = i + 1; j < peptides.length; j++) {
+        const check = checkTimingConflict(peptides[i], peptides[j]);
+        if (check.hasConflict) {
+          conflicts.push({ peptide1: peptides[i], peptide2: peptides[j], ...check });
+        }
+      }
+    }
+
+    return res.json({
+      conflicts,
+      schedule: getOptimalSchedule(peptides),
+      hasConflicts: conflicts.length > 0
+    });
+  });
+
+  return httpServer;
+}
+```
+
+---
+
+## STEP 7: Create client/src/pages/MentorChatPage.tsx
+
+Create a new chat page component:
+
+```tsx
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Beaker, Send, ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { useUserProfile } from "@/context/UserProfileContext";
+import { MessageBubble } from "@/components/MessageBubble";
+import { TypingIndicator } from "@/components/TypingIndicator";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  isUrgent?: boolean;
+}
+
+export function MentorChatPage() {
+  const { setCurrentStep } = useUserProfile();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [mentorMode, setMentorMode] = useState<'side-effects' | 'learn-more'>('side-effects');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const mode = sessionStorage.getItem('mentorMode') as 'side-effects' | 'learn-more' || 'side-effects';
+    setMentorMode(mode);
+    
+    const initialMessage: Message = {
+      role: "assistant",
+      content: mode === 'side-effects' 
+        ? `Hey! I'm here to help you work through any side effects you're experiencing.
+
+**Tell me what's going on** — what peptide(s) are you taking and what are you experiencing?
+
+Don't worry about being technical — just describe it like you would to a friend.
+
+*If you're experiencing anything severe like difficulty breathing, chest pain, or a medical emergency, please seek immediate medical attention.*`
+        : `Great! I'm happy to do a deep dive on any peptide with you.
+
+**What would you like to learn about?** You can ask things like:
+- "Tell me everything about BPC-157"
+- "What's the difference between tirzepatide and semaglutide?"
+- "How should I time my CJC-1295 injections?"
+
+What's on your mind?`
+    };
+    setMessages([initialMessage]);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || isLoading) return;
+
+    const userMessage: Message = { role: "user", content: inputValue.trim() };
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/mentor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+          context: { mode: mentorMode }
+        })
+      });
+
+      const data = await response.json();
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: data.message,
+        isUrgent: data.isUrgent
+      }]);
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again."
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="sticky top-0 z-50 flex items-center justify-between p-4 backdrop-blur-sm bg-background/80 border-b">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => setCurrentStep("welcome")}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <Beaker className="w-5 h-5 text-primary" />
+          <span className="font-semibold">Pat - {mentorMode === 'side-effects' ? 'Side Effects Help' : 'Peptide Deep Dive'}</span>
+        </div>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.map((message, index) => (
+            <div key={index}>
+              {message.isUrgent && message.role === "assistant" && (
+                <div className="mb-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                  <p className="text-sm text-red-600 font-medium">Urgent safety information below.</p>
+                </div>
+              )}
+              <MessageBubble role={message.role} content={message.content} />
+            </div>
+          ))}
+          {isLoading && <TypingIndicator />}
+          <div ref={messagesEndRef} />
+        </div>
+      </main>
+
+      <div className="sticky bottom-0 border-t bg-background p-4">
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <textarea
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+            placeholder="Describe what you're experiencing..."
+            className="flex-1 resize-none rounded-xl border px-4 py-3 min-h-[48px]"
+            rows={1}
+            disabled={isLoading}
+          />
+          <Button onClick={handleSendMessage} disabled={!inputValue.trim() || isLoading} size="icon" className="h-12 w-12">
+            {isLoading ? <Loader2 className="animate-spin" /> : <Send />}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## STEP 8: Update client/src/pages/WelcomePage.tsx
+
+Add the Mentor Mode entry point. Add a new button below the existing "Let's find what's right for you" button:
+
+```tsx
+// Add these imports at the top:
+import { MessageCircleQuestion, Stethoscope } from "lucide-react";
+import { useState } from "react";
+
+// Inside the component, add state:
+const [showMentorOptions, setShowMentorOptions] = useState(false);
+
+// Add handler:
+const handleMentorOptionSelect = (mode: 'side-effects' | 'learn-more') => {
+  sessionStorage.setItem('mentorMode', mode);
+  setCurrentStep("mentor");
+};
+
+// In the JSX, after the existing "Let's find what's right for you" button section, add:
+
+{/* Divider */}
+<div className="relative py-6">
+  <div className="absolute inset-0 flex items-center">
+    <span className="w-full border-t border-border" />
+  </div>
+  <div className="relative flex justify-center text-xs uppercase">
+    <span className="bg-background px-4 text-muted-foreground">or</span>
+  </div>
+</div>
+
+{/* Mentor Mode Button */}
+<Button
+  size="lg"
+  variant="outline"
+  onClick={() => setShowMentorOptions(true)}
+  className="h-14 px-8 text-lg gap-3 w-full sm:w-auto border-2"
+>
+  <MessageCircleQuestion className="w-5 h-5" />
+  Questions about your current peptide journey?
+</Button>
+
+{/* When showMentorOptions is true, show two option cards: */}
+{showMentorOptions && (
+  <div className="grid sm:grid-cols-2 gap-4 max-w-xl mx-auto mt-4">
+    <button onClick={() => handleMentorOptionSelect('side-effects')} className="p-6 rounded-xl bg-card border-2 hover:border-primary/50 text-left">
+      <Stethoscope className="w-6 h-6 text-amber-600 mb-4" />
+      <h3 className="font-semibold text-lg mb-2">Side Effects Help</h3>
+      <p className="text-sm text-muted-foreground">Having symptoms? I'll help you understand if they're normal.</p>
+    </button>
+    <button onClick={() => handleMentorOptionSelect('learn-more')} className="p-6 rounded-xl bg-card border-2 hover:border-primary/50 text-left">
+      <MessageCircleQuestion className="w-6 h-6 text-blue-600 mb-4" />
+      <h3 className="font-semibold text-lg mb-2">Learn About a Peptide</h3>
+      <p className="text-sm text-muted-foreground">Deep dive into dosing, timing, and what to expect.</p>
+    </button>
+  </div>
+)}
+```
+
+---
+
+## STEP 9: Update client/src/App.tsx
+
+Add the MentorChatPage route:
+
+```tsx
+// Add import:
+import { MentorChatPage } from "@/pages/MentorChatPage";
+
+// In AppContent function, add this condition after the welcome check:
+if (currentStep === "mentor") {
+  return <MentorChatPage />;
+}
+```
+
+---
+
+## Summary of Changes
+
+1. **Secret**: Add `GEMINI_API_KEY`
+2. **schema.ts**: Add "mentor" to OnboardingStep
+3. **NEW server/sideEffectsDatabase.ts**: Comprehensive side effects data
+4. **NEW server/injectionTroubleshooting.ts**: Injection issues database
+5. **NEW server/timingConflicts.ts**: Timing requirements database
+6. **UPDATE server/routes.ts**: Add Gemini API + /api/mentor endpoint
+7. **NEW client/src/pages/MentorChatPage.tsx**: Mentor chat interface
+8. **UPDATE client/src/pages/WelcomePage.tsx**: Add Mentor entry point
+9. **UPDATE client/src/App.tsx**: Route to MentorChatPage
+
+---
+
+## Test After Implementation
+
+1. "I started semaglutide and feel nauseous" → Should get 🟢 NORMAL with tips
+2. "I have spreading redness and fever at my injection site" → Should get 🔴 URGENT
+3. "What's the best time to take CJC-1295?" → Should explain fasting/bedtime
