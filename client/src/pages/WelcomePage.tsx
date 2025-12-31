@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Beaker, ArrowRight, Shield } from "lucide-react";
+import { Beaker, ArrowRight, Shield, MessageCircleQuestion, Stethoscope } from "lucide-react";
 import { useUserProfile } from "@/context/UserProfileContext";
 
 export function WelcomePage() {
   const { setCurrentStep } = useUserProfile();
+  const [showMentorOptions, setShowMentorOptions] = useState(false);
+
+  const handleMentorOptionSelect = (mode: 'side-effects' | 'learn-more') => {
+    sessionStorage.setItem('mentorMode', mode);
+    setCurrentStep("mentor");
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -49,6 +56,55 @@ export function WelcomePage() {
             <p className="text-sm text-muted-foreground">
               Takes about 2 minutes
             </p>
+
+            <div className="flex items-center gap-4 pt-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-sm text-muted-foreground">or</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {!showMentorOptions ? (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setShowMentorOptions(true)}
+                className="gap-3"
+                data-testid="button-mentor-mode"
+              >
+                <MessageCircleQuestion className="w-5 h-5" />
+                Questions about your current peptide journey?
+              </Button>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-4 w-full">
+                <button
+                  onClick={() => handleMentorOptionSelect('side-effects')}
+                  className="p-6 rounded-xl bg-card border-2 border-border text-left hover:border-primary/50 transition-colors"
+                  data-testid="button-side-effects"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-amber-600/10 flex items-center justify-center mb-4">
+                    <Stethoscope className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Side Effects Help</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Get guidance on managing side effects from your current peptides.
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => handleMentorOptionSelect('learn-more')}
+                  className="p-6 rounded-xl bg-card border-2 border-border text-left hover:border-primary/50 transition-colors"
+                  data-testid="button-learn-more"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-600/10 flex items-center justify-center mb-4">
+                    <MessageCircleQuestion className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Learn About a Peptide</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ask questions about specific peptides you're interested in.
+                  </p>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="pt-12 space-y-6">
